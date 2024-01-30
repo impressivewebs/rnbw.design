@@ -178,12 +178,12 @@ document.addEventListener("DOMContentLoaded", function () {
       anim3.style.opacity = 0;
       anim1.classList.add("background-secondary");
       anim2.classList.remove("background-secondary");
-    }, 200);
+    }, 1500);
     setTimeout(() => {
       delay = 250;
       setTimeout(() => {
         observer.observe(anim1);
-      }, 500);
-    }, 500);
+      }, 1500);
+    }, 1500);
   }
 });
