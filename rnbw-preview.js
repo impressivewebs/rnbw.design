@@ -239,16 +239,17 @@ const rnbwPreviewTemplate = `
         </h3>
 
     </div>
-    <div class="box-s padding-l border-left background-primary radius-s border opacity-m" style="word-break: break-word;">
-        <code>
-            &lt;span style="color:#006400"&gt;rnbw is a modern design and code editor.&lt;/span&gt;
-            &lt;span style="color:#0000CD"&gt;it's simple, flexible, and open.&lt;/span&gt;
-            &lt;span style="color:#800080"&gt;it works with your files.&lt;/span&gt;
-            &lt;span style="color:#EE82EE"&gt;it's powered by the web.&lt;/span&gt;
-            &lt;span style="color:#FF4500"&gt;it's open source.&lt;/span&gt;
-            &lt;span style="color:#FFA500"&gt;it fully embraces open web standards.&lt;/span&gt;
-            &lt;span style="color:#FFD700"&gt;and, it is powered by AI...&lt;/span&gt;
-        </code>
+    <div class="box-s padding-l border-left background-primary radius-s border opacity-m" style=" background-color: #1e1e1e; word-break: break-word;">  
+    <code style="padding: 1rem; color: #d4d4d4; font-family: 'Courier New', Courier, monospace; font-size: 14px; border-radius: 5px;">
+    
+   <p class="hidden" > &lt;span</span> style="display: block; color:#006400"&gt;rnbw is a modern design and code editor.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#0000CD"&gt;it's simple, flexible, and open.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#800080"&gt;it works with your files.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#EE82EE"&gt;it's powered by the web.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#FF4500"&gt;it's open source.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#FFA500"&gt;it fully embraces open web standards.&lt;/span&gt;</p>
+   <p class="hidden" > &lt;span style="display: block; color:#FFD700"&gt;and, it is powered by AI...&lt;/span&gt;</p>
+    </code>
     </div>
 </div>
 `;
@@ -282,6 +283,7 @@ document.addEventListener("DOMContentLoaded", function () {
             observer.unobserve(rnbwPreviewElement);
             const h3 = document.querySelector("h3");
             const spans = h3.querySelectorAll("span");
+            
             let index = 0;
             let charIndex = 0;
 
@@ -296,9 +298,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         heading3DropdownIcon.classList.remove("hidden");
                     }
                     if (charIndex < originalText.length) {
+                        // console.log(originalText.slice(0, charIndex + 1))
                         spans[index].textContent = originalText.slice(0, charIndex + 1);
                         charIndex++;
-                        setTimeout(type, 40);
+                        setTimeout(type, 50);
                     } else {
                         charIndex = 0;
                         index++;
@@ -312,20 +315,43 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const code = document.querySelector("code");
+            const codeHTML = code.querySelectorAll("p");
+
+
             if (!text) {
                 text = code.textContent;
             }
-            code.textContent = "";
 
             let i = 0;
+            let j = 0;
+        
+            function typeCode() {
+                if(i<codeHTML.length) {
+                    codeHTML[i].classList.remove('hidden');
+                    const originalText = codeHTML[i].getAttribute("data-text");
+                    if(j<originalText.length) {
+                        const chr = originalText.slice(0, j+1);
+                        codeHTML[i].textContent = chr;
+                        j++;
+                        setTimeout(typeCode, 10); 
+                    }
+                    else {
+                        j = 0;
+                        i++;
+                        setTimeout(typeCode, 15);
+                    }  
+                }
+            }
+            let idx = 0;
             let spanCount = 1;
             let totalSpansAnimated = 0;
             let timer = 100;
-            function typeCode() {
-                if (i < text.length) {
-                    code.textContent += text.charAt(i);
-                    i++;
-                    if (text.charAt(i) === ".") {
+
+            function spansAppear(){
+                if (idx < text.length) {
+                    // code.textContent += text.charAt(i);
+                    idx++;
+                    if (text.charAt(idx) === ".") {
                         if (spanCount <= 7) {
                             let element = document.getElementById("span" + spanCount);
                             setTimeout(() => {
@@ -335,17 +361,21 @@ document.addEventListener("DOMContentLoaded", function () {
                             timer += 70;
                             spanCount++;
                         }
-                        setTimeout(typeCode, 70);
+                        setTimeout(spansAppear, 50);
                     } else {
-                        setTimeout(typeCode, 15); // adjust the delay time as needed
+                        setTimeout(spansAppear, 15); // adjust the delay time as needed
                     }
                 }
             }
 
+            codeHTML.forEach((element) => element.setAttribute("data-text", element.textContent));
+            codeHTML.forEach((element) => (element.textContent = ""));
             typeCode();
+            spansAppear();
             spans.forEach((span) => span.setAttribute("data-text", span.textContent));
             spans.forEach((span) => (span.textContent = ""));
-            type();
+            setTimeout(type,1000);
+            
         }
     }
 
@@ -379,13 +409,14 @@ document.addEventListener("DOMContentLoaded", function () {
         
         const spans = document.querySelectorAll("h3 span");
         const code = document.querySelector("code");
+        const codeHTML = code.querySelectorAll("p");
         if (!text) {
             text = code.textContent;
         }
 
         let index = spans.length - 1;
         let charIndex = spans[index].textContent.length - 1;
-        let i = code.textContent.length - 1;
+        
 
         function reverseText() {
             if (index >= 0) {
@@ -401,16 +432,40 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        let i = codeHTML.length - 1;
+        let j = codeHTML[i].textContent.length - 1;
         
-            let spanCount = 8;
-            let totalSpansAnimated = 8;
-            let timer = 100;
         function reverseCode() {
             if (i >= 0) {
-                code.textContent = code.textContent.slice(0, i);
-                i--;
-                if(text.charAt(i) === ".") {
-                    if (spanCount >=0 ) {
+                if (j >= 0) {
+                    codeHTML[i].textContent = codeHTML[i].textContent.slice(0, j);
+                    j--;
+                    setTimeout(reverseCode, 10);
+                } else {
+                    i--;
+                    j = codeHTML[i].textContent.length - 1;
+                    setTimeout(reverseCode, 40);
+                }
+            }
+            else {
+                setTimeout(() => {
+                  reset();
+                }, 500);
+             }
+        }
+
+
+        let idx = code.textContent.length - 1;
+        let spanCount = 8;
+        let totalSpansAnimated = 8;
+        let timer = 100;
+
+        function spansDisappear(){
+            if (idx < text.length) {
+                // code.textContent += text.charAt(i);
+                idx--;
+                if (text.charAt(idx) === ".") {
+                    if (spanCount >= 0) {
                         let element = document.getElementById("span" + spanCount);
                         setTimeout(() => {
                             element.style.opacity = 0;
@@ -419,21 +474,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         timer += 70;
                         spanCount--;
                     }
-                    setTimeout(reverseCode, 100);
+                    setTimeout(spansDisappear, 100);
                 } else {
-                    setTimeout(reverseCode, 10); // adjust the delay time as needed
+                    setTimeout(spansDisappear, 20); // adjust the delay time as needed
                 }
-                
             }
-            else {
-                setTimeout(() => {
-                  reset();
-                }, 500);
-              }
         }
 
         reverseText();
         reverseCode();
+        spansDisappear();
 
     }
 
