@@ -264,14 +264,47 @@ const rnbwPreviewTemplate = `
     </div>
     <div class="box-s padding-l border-left background-primary radius-s border opacity-m" style="word-break: break-word;">
        
-    <code class="code">
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#006400"</span><span class="tag">&gt;</span>rnbw is a modern design and code editor.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#0000CD"</span><span class="tag">&gt;</span>it's simple, flexible, and open.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#800080"</span><span class="tag">&gt;</span>it works with your files.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#EE82EE"</span><span class="tag">&gt;</span>it's powered by the web.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FF4500"</span><span class="tag">&gt;</span>it's open source.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FFA500"</span><span class="tag">&gt;</span>it fully embraces open web standards.<span class="tag">&lt;/span&gt;</span><br>
-        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FFD700"</span><span class="tag">&gt;</span>and, it is powered by AI...<span class="tag">&lt;/span&gt;</span>
+    <code class="code" id="code">
+        <span class="hidden" data-text='&lt;span style="color:#006400"&gt;rnbw is a modern design and code editor.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#006400"</span>
+        <span class="tag">&gt;</span>rnbw is a modern design and code editor.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#0000cd"&gt;it&#39;s simple, flexible, and open.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#0000cd"</span>
+        <span class="tag">&gt;</span>it&#39;s simple, flexible, and open.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#800080"&gt;It works with your files.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#800080"</span>
+        <span class="tag">&gt;</span>It works with your files.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#ee82ee"&gt;it&#39;s powered by the web.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#ee82ee"</span>
+        <span class="tag">&gt;</span>it&#39;s powered by the web.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#ff4500"&gt;it&#39;s open source.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#ff4500"</span>
+        <span class="tag">&gt;</span>it&#39;s open source.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#ffa500"&gt;it fully embraces open web standards.&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        <span class="attribute">style</span>=<span class="string">"color:#ffa500"</span>
+        <span class="tag">&gt;</span>it fully embraces open web standards.<span class="tag">&lt;/span&gt;</span>
+        </span><br>
+
+        <span class="hidden" data-text='&lt;span style="color:#ffd700"&gt;and, it is powered by AI...&lt;/span&gt;'>
+        <span class="tag">&lt;span</span>
+        
+        
     </code>
     
        
@@ -291,8 +324,18 @@ class RnbwPreview extends HTMLElement {
     this.spans = this.h3.querySelectorAll("span.hidden");
     this.currentSpanIndex = 0;
     this.currentCharIndex = 0;
+
+    // Initialize for code typing
+    this.codeBlock = this.querySelector("code");
+    this.codeLines = this.codeBlock.querySelectorAll("span.hidden");
+    this.currentCodeLineIndex = 0;
+    this.currentCodeCharIndex = 0;
+
     this.isTyping = true;
     this.typingSpeed = 25; // milliseconds per character
+    this.reverseTypingSpeed = 10; // milliseconds per character
+    this.codeTypingSpeed = 10; // milliseconds per character
+    this.codeReverseTypingSpeed = 5; // milliseconds per character
     this.pauseBetweenLines = 1000; // milliseconds between lines
     this.isReverseTyping = false; // New flag to differentiate between forward and reverse typing
 
@@ -305,7 +348,8 @@ class RnbwPreview extends HTMLElement {
     this.observer = new IntersectionObserver((entries, observer) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          this.initTypingEffect();
+          this.initTypingEffect(); // Initialize text typing effect
+          this.initCodeTypingEffect(); // Initialize code typing effect
           observer.unobserve(entry.target); // Optional: Stop observing after the animation starts
         }
       });
@@ -373,6 +417,68 @@ class RnbwPreview extends HTMLElement {
           // Reverse typing is complete, start forward typing again
           this.isReverseTyping = true; // Set the flag as it's now going to start forward typing
           setTimeout(() => this.initTypingEffect(), this.pauseBetweenLines); // wait for 2 seconds, then start forward typing
+        }
+      }
+    }
+  }
+  initCodeTypingEffect() {
+    this.codeLines.forEach((line) => {
+      line.textContent = ""; // Clear content
+    });
+    this.typeNextCodeLine();
+  }
+
+  typeNextCodeLine() {
+    // Ensuring each code line's typing syncs with text typing
+    if (this.currentCodeLineIndex < this.codeLines.length) {
+      const line = this.codeLines[this.currentCodeLineIndex];
+      const text = line.getAttribute("data-text") || line.textContent;
+      line.classList.remove("hidden"); // Make sure the line is visible
+      if (this.currentCodeCharIndex < text.length) {
+        line.textContent += text.charAt(this.currentCodeCharIndex);
+        this.currentCodeCharIndex++;
+        setTimeout(() => this.typeNextCodeLine(), this.codeTypingSpeed); // Synced speed
+      } else {
+        this.currentCodeCharIndex = 0;
+        this.currentCodeLineIndex++;
+        setTimeout(() => this.typeNextCodeLine(), this.pauseBetweenLines); // Synced pause
+      }
+    } else {
+      // Start reverse typing for code when forward typing is complete
+      this.currentCodeLineIndex = this.codeLines.length - 1;
+      this.currentCodeCharIndex =
+        this.codeLines[this.currentCodeLineIndex].getAttribute(
+          "data-text"
+        ).length;
+      setTimeout(() => this.reverseCodeTypingEffect(), 2000); // Consistent wait time with text
+    }
+  }
+
+  reverseCodeTypingEffect() {
+    // Reverse typing for code should also sync with text
+    if (this.currentCodeLineIndex >= 0) {
+      const line = this.codeLines[this.currentCodeLineIndex];
+      const text = line.getAttribute("data-text") || line.textContent;
+      if (this.currentCodeCharIndex > 0) {
+        line.textContent = text.substring(0, this.currentCodeCharIndex - 1);
+        this.currentCodeCharIndex--;
+        setTimeout(
+          () => this.reverseCodeTypingEffect(),
+          this.codeReverseTypingSpeed
+        ); // Synced speed
+      } else {
+        if (this.currentCodeLineIndex > 0) {
+          this.currentCodeLineIndex--;
+          this.currentCodeCharIndex =
+            this.codeLines[this.currentCodeLineIndex].getAttribute(
+              "data-text"
+            ).length;
+          this.reverseCodeTypingEffect();
+        } else {
+          // When reverse typing for code is complete, reset for next round
+          this.currentCodeLineIndex = 0;
+          this.currentCodeCharIndex = 0;
+          setTimeout(() => this.initCodeTypingEffect(), this.pauseBetweenLines); // Consistent wait time with text
         }
       }
     }
