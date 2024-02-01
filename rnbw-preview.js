@@ -339,6 +339,10 @@ class RnbwPreview extends HTMLElement {
     this.pauseBetweenLines = 1000; // milliseconds between lines
     this.isReverseTyping = false; // New flag to differentiate between forward and reverse typing
 
+    // Flags to track completion of typing animations
+    this.textTypingCompleted = false;
+    this.codeTypingCompleted = false;
+
     const observerOptions = {
       root: null,
       rootMargin: "0px",
@@ -356,6 +360,18 @@ class RnbwPreview extends HTMLElement {
     }, observerOptions);
 
     this.observer.observe(this);
+  }
+
+  // Method to restart animations if both have completed
+  checkAndRestartAnimations() {
+    if (this.textTypingCompleted && this.codeTypingCompleted) {
+      // Reset completion flags
+      this.textTypingCompleted = false;
+      this.codeTypingCompleted = false;
+      // Restart animations
+      this.initTypingEffect();
+      this.initCodeTypingEffect();
+    }
   }
 
   initTypingEffect() {
@@ -419,8 +435,13 @@ class RnbwPreview extends HTMLElement {
           setTimeout(() => this.initTypingEffect(), this.pauseBetweenLines); // wait for 2 seconds, then start forward typing
         }
       }
+    } else {
+      // Check if reverse typing is complete and if code typing is also complete
+      this.textTypingCompleted = true;
+      this.checkAndRestartAnimations();
     }
   }
+
   initCodeTypingEffect() {
     this.codeLines.forEach((line) => {
       line.textContent = ""; // Clear content
@@ -481,6 +502,10 @@ class RnbwPreview extends HTMLElement {
           setTimeout(() => this.initCodeTypingEffect(), this.pauseBetweenLines); // Consistent wait time with text
         }
       }
+    } else {
+      // Check if reverse typing for code is complete and if text typing is also complete
+      this.codeTypingCompleted = true;
+      this.checkAndRestartAnimations();
     }
   }
 }
