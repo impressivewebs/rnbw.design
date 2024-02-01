@@ -227,28 +227,54 @@ const rnbwPreviewTemplate = `
             .hidden {
                 display: none;
             }
+            .code {
+                font-family: 'Fira Code', 'Courier New', Courier, monospace;
+                white-space: pre-wrap; /* Since code blocks are not automatically wrapped */
+            }
+            
+            .code .tag {
+                color: #ee82ee;
+            }
+            
+            .code .attribute {
+                color: #006400;
+            }
+            
+            .code .string {
+                color: #ff4500;
+            }
+            
+            .code .comment {
+                font-style: italic;
+            }
         </style>
         <h3>
-            <span class="hidden" style="color: #006400">rnbw is a modern design and code editor.</span>
-            <span class="hidden" style="color: #0000cd">it's simple, flexible, and open.</span>
-            <span class="hidden" style="color: #800080">It works with your files.</span>
-            <span class="hidden" style="color: #ee82ee">it's powered by the web.</span>
-            <span class="hidden" style="color: #ff4500">it's open source.</span>
-            <span class="hidden" style="color: #ffa500">it fully embraces open web standards.</span>
-            <span class="hidden" style="color: #ffd700">and, it is powered by AI...</span>
+            <span class="hidden" style="color: #006400" data-text="rnbw is a modern design and code editor.">
+            rnbw is a modern design and code editor.</span>
+            <span class="hidden" style="color: #0000cd" data-text="it's simple, flexible, and open.">
+            it's simple, flexible, and open.</span>
+            <span class="hidden" style="color: #800080" data-text="It works with your files.">It works with your files.</span>
+            <span class="hidden" style="color: #ee82ee" data-text="it's powered by the web.">it's powered by the web.</span>
+            <span class="hidden" style="color: #ff4500" data-text="it's open source.">it's open source.</span>
+            <span class="hidden" style="color: #ffa500" data-text="it fully embraces open web standards.">
+            it fully embraces open web standards.</span>
+            <span class="hidden" style="color: #ffd700" data-text="and, it is powered by AI...">and, it is powered by AI...</span>
         </h3>
 
     </div>
     <div class="box-s padding-l border-left background-primary radius-s border opacity-m" style="word-break: break-word;">
-        <code>
-            &lt;span style="color:#006400"&gt;rnbw is a modern design and code editor.&lt;/span&gt;
-            &lt;span style="color:#0000CD"&gt;it's simple, flexible, and open.&lt;/span&gt;
-            &lt;span style="color:#800080"&gt;it works with your files.&lt;/span&gt;
-            &lt;span style="color:#EE82EE"&gt;it's powered by the web.&lt;/span&gt;
-            &lt;span style="color:#FF4500"&gt;it's open source.&lt;/span&gt;
-            &lt;span style="color:#FFA500"&gt;it fully embraces open web standards.&lt;/span&gt;
-            &lt;span style="color:#FFD700"&gt;and, it is powered by AI...&lt;/span&gt;
-        </code>
+       
+    <code class="code">
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#006400"</span><span class="tag">&gt;</span>rnbw is a modern design and code editor.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#0000CD"</span><span class="tag">&gt;</span>it's simple, flexible, and open.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#800080"</span><span class="tag">&gt;</span>it works with your files.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#EE82EE"</span><span class="tag">&gt;</span>it's powered by the web.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FF4500"</span><span class="tag">&gt;</span>it's open source.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FFA500"</span><span class="tag">&gt;</span>it fully embraces open web standards.<span class="tag">&lt;/span&gt;</span><br>
+        <span class="tag">&lt;span</span> <span class="attribute">style</span>=<span class="string">"color:#FFD700"</span><span class="tag">&gt;</span>and, it is powered by AI...<span class="tag">&lt;/span&gt;</span>
+    </code>
+    
+       
     </div>
 </div>
 `;
@@ -257,185 +283,102 @@ class RnbwPreview extends HTMLElement {
   constructor() {
     super();
     this.innerHTML = rnbwPreviewTemplate;
+    this.init();
+  }
+
+  init() {
+    this.h3 = this.querySelector("h3");
+    this.spans = this.h3.querySelectorAll("span.hidden");
+    this.currentSpanIndex = 0;
+    this.currentCharIndex = 0;
+    this.isTyping = true;
+    this.typingSpeed = 25; // milliseconds per character
+    this.pauseBetweenLines = 1000; // milliseconds between lines
+    this.isReverseTyping = false; // New flag to differentiate between forward and reverse typing
+
+    const observerOptions = {
+      root: null,
+      rootMargin: "0px",
+      threshold: 0.1,
+    };
+
+    this.observer = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          this.initTypingEffect();
+          observer.unobserve(entry.target); // Optional: Stop observing after the animation starts
+        }
+      });
+    }, observerOptions);
+
+    this.observer.observe(this);
+  }
+
+  initTypingEffect() {
+    // Reset indices for a fresh start if it's coming from reverse typing
+    if (this.isReverseTyping) {
+      this.currentSpanIndex = 0;
+      this.currentCharIndex = 0;
+      this.isReverseTyping = false; // Reset the flag
+    }
+
+    this.spans.forEach((span) => {
+      span.textContent = "";
+    });
+    this.typeNextChar();
+  }
+
+  typeNextChar() {
+    if (this.currentSpanIndex < this.spans.length) {
+      const span = this.spans[this.currentSpanIndex];
+      const text = span.getAttribute("data-text") || span.textContent;
+      span.classList.remove("hidden"); // Make sure the span is visible
+      if (this.currentCharIndex < text.length) {
+        span.textContent += text.charAt(this.currentCharIndex);
+        this.currentCharIndex++;
+        setTimeout(() => this.typeNextChar(), this.typingSpeed);
+      } else {
+        this.currentCharIndex = 0;
+        this.currentSpanIndex++;
+        setTimeout(() => this.typeNextChar(), this.pauseBetweenLines);
+      }
+    } else {
+      // Forward typing is complete
+      this.isTyping = false;
+      // Set for reverse typing
+      this.currentSpanIndex = this.spans.length - 1;
+      this.currentCharIndex =
+        this.spans[this.currentSpanIndex].getAttribute("data-text").length;
+      setTimeout(() => this.reverseTypingEffect(), 2000); // wait for 2 seconds, then start reverse typing
+    }
+  }
+
+  reverseTypingEffect() {
+    if (this.currentSpanIndex >= 0) {
+      const span = this.spans[this.currentSpanIndex];
+      const text = span.getAttribute("data-text") || span.textContent;
+      if (this.currentCharIndex > 0) {
+        // Remove the last character
+        span.textContent = text.substring(0, this.currentCharIndex - 1);
+        this.currentCharIndex--;
+        setTimeout(() => this.reverseTypingEffect(), this.reverseTypingSpeed);
+      } else {
+        // Move to the previous span if it exists, without a pause
+        if (this.currentSpanIndex > 0) {
+          this.currentSpanIndex--;
+          this.currentCharIndex =
+            this.spans[this.currentSpanIndex].getAttribute("data-text").length;
+          this.reverseTypingEffect();
+        } else {
+          // Reverse typing is complete, start forward typing again
+          this.isReverseTyping = true; // Set the flag as it's now going to start forward typing
+          setTimeout(() => this.initTypingEffect(), this.pauseBetweenLines); // wait for 2 seconds, then start forward typing
+        }
+      }
+    }
   }
 }
 
 customElements.define("rnbw-preview", RnbwPreview);
 
-document.addEventListener("DOMContentLoaded", function () {
-    const rnbwPreviewElement = document.querySelector("rnbw-preview");
-
-    const options = {
-        root: null,
-        rootMargin: "0px",
-        threshold: 0.1,
-    };
-
-    const observer = new IntersectionObserver(animateOnIntersect, options);
-
-    let text = "";
-    let isAnimating = false;
-
-    function animateOnIntersect(entries, observer) {
-        if (entries[0].isIntersecting && !isAnimating) {
-            isAnimating = true;
-            observer.unobserve(rnbwPreviewElement);
-            const h3 = document.querySelector("h3");
-            const spans = h3.querySelectorAll("span");
-            let index = 0;
-            let charIndex = 0;
-
-            function type() {
-                if (index < spans.length) {
-                    spans[index].classList.remove("hidden");
-                    const originalText = spans[index].getAttribute("data-text");
-                    if (index === 0) {
-                        let heading3DropdownIcon = document.getElementById(
-                            "heading3-dropdown-icon"
-                        );
-                        heading3DropdownIcon.classList.remove("hidden");
-                    }
-                    if (charIndex < originalText.length) {
-                        spans[index].textContent = originalText.slice(0, charIndex + 1);
-                        charIndex++;
-                        setTimeout(type, 40);
-                    } else {
-                        charIndex = 0;
-                        index++;
-                        setTimeout(type, 800);
-                    }
-                } else {
-                    setTimeout(() => {
-                        reverseAnimation();
-                    }, 2500); // Wait for initial animation to complete
-                }
-            }
-
-            const code = document.querySelector("code");
-            if (!text) {
-                text = code.textContent;
-            }
-            code.textContent = "";
-
-            let i = 0;
-            let spanCount = 1;
-            let totalSpansAnimated = 0;
-            let timer = 100;
-            function typeCode() {
-                if (i < text.length) {
-                    code.textContent += text.charAt(i);
-                    i++;
-                    if (text.charAt(i) === ".") {
-                        if (spanCount <= 7) {
-                            let element = document.getElementById("span" + spanCount);
-                            setTimeout(() => {
-                                element.style.opacity = 1;
-                                totalSpansAnimated++;
-                            }, timer);
-                            timer += 70;
-                            spanCount++;
-                        }
-                        setTimeout(typeCode, 70);
-                    } else {
-                        setTimeout(typeCode, 15); // adjust the delay time as needed
-                    }
-                }
-            }
-
-            typeCode();
-            spans.forEach((span) => span.setAttribute("data-text", span.textContent));
-            spans.forEach((span) => (span.textContent = ""));
-            type();
-        }
-    }
-
-    function reset() {
-        console.log("reset function is called")
-        const spans = document.querySelectorAll("h3 span");
-        spans.forEach((span) => span.classList.add("hidden"));
-    
-        let heading3DropdownIcon = document.getElementById(
-          "heading3-dropdown-icon"
-        );
-        heading3DropdownIcon.classList.add("hidden");
-    
-        for (let i = 1; i <= 7; i++) {
-          let element = document.getElementById("span" + i);
-          element.style.opacity = 0;
-        }
-        const code = document.querySelector("code");
-        code.textContent = "";
-        observer.unobserve(rnbwPreviewElement);
-        index = 0;
-        charIndex = 0;
-        i = 0;
-        spanCount = 1;
-        totalSpansAnimated = 0;
-        timer = 1500;
-        observer.observe(rnbwPreviewElement);
-      }
-
-    function reverseAnimation() {
-        
-        const spans = document.querySelectorAll("h3 span");
-        const code = document.querySelector("code");
-        if (!text) {
-            text = code.textContent;
-        }
-
-        let index = spans.length - 1;
-        let charIndex = spans[index].textContent.length - 1;
-        let i = code.textContent.length - 1;
-
-        function reverseText() {
-            if (index >= 0) {
-                if (charIndex >= 0) {
-                    spans[index].textContent = spans[index].textContent.slice(0, charIndex);
-                    charIndex--;
-                    setTimeout(reverseText, 40);
-                } else {
-                    index--;
-                    charIndex = spans[index].textContent.length - 1;
-                    setTimeout(reverseText, 800);
-                }
-            }
-        }
-
-        
-            let spanCount = 8;
-            let totalSpansAnimated = 8;
-            let timer = 100;
-        function reverseCode() {
-            if (i >= 0) {
-                code.textContent = code.textContent.slice(0, i);
-                i--;
-                if(text.charAt(i) === ".") {
-                    if (spanCount >=0 ) {
-                        let element = document.getElementById("span" + spanCount);
-                        setTimeout(() => {
-                            element.style.opacity = 0;
-                            totalSpansAnimated--;
-                        }, timer);
-                        timer += 70;
-                        spanCount--;
-                    }
-                    setTimeout(reverseCode, 100);
-                } else {
-                    setTimeout(reverseCode, 10); // adjust the delay time as needed
-                }
-                
-            }
-            else {
-                setTimeout(() => {
-                  reset();
-                }, 500);
-              }
-        }
-
-        reverseText();
-        reverseCode();
-
-    }
-
-    observer.observe(rnbwPreviewElement);
-});
+document.addEventListener("DOMContentLoaded", function () {});
