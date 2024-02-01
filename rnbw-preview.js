@@ -330,14 +330,18 @@ class RnbwPreview extends HTMLElement {
     this.codeLines = this.codeBlock.querySelectorAll("span.hidden");
     this.currentCodeLineIndex = 0;
     this.currentCodeCharIndex = 0;
+    this.lastCodeTime = undefined;
 
-    this.isTyping = true;
-    this.typingSpeed = 25; // milliseconds per character
-    this.reverseTypingSpeed = 10; // milliseconds per character
+    // Common properties
+    this.typingSpeed = 20; // milliseconds per character
+    this.reverseTypingSpeed = 15; // milliseconds per character
     this.codeTypingSpeed = 10; // milliseconds per character
     this.codeReverseTypingSpeed = 5; // milliseconds per character
     this.pauseBetweenLines = 1000; // milliseconds between lines
+    this.pauseAfterComplete = 2000; // milliseconds to pause after completing forward typing
+    this.restartDelay = 2000; // milliseconds to delay before restarting after reverse typing
     this.isReverseTyping = false; // New flag to differentiate between forward and reverse typing
+    this.isReverseCodeTyping = false; // New flag to differentiate between forward and reverse typing for code
 
     // Flags to track completion of typing animations
     this.textTypingCompleted = false;
@@ -362,18 +366,6 @@ class RnbwPreview extends HTMLElement {
     this.observer.observe(this);
   }
 
-  // Method to restart animations if both have completed
-  checkAndRestartAnimations() {
-    if (this.textTypingCompleted && this.codeTypingCompleted) {
-      // Reset completion flags
-      this.textTypingCompleted = false;
-      this.codeTypingCompleted = false;
-      // Restart animations
-      this.initTypingEffect();
-      this.initCodeTypingEffect();
-    }
-  }
-
   initTypingEffect() {
     // Reset indices for a fresh start if it's coming from reverse typing
     if (this.isReverseTyping) {
@@ -388,124 +380,145 @@ class RnbwPreview extends HTMLElement {
     this.typeNextChar();
   }
 
-  typeNextChar() {
+  typeNextChar(timestamp) {
+    if (!this.lastCharTime) this.lastCharTime = timestamp + this.restartDelay;
+    const progress = timestamp - this.lastCharTime;
+
     if (this.currentSpanIndex < this.spans.length) {
       const span = this.spans[this.currentSpanIndex];
+
       const text = span.getAttribute("data-text") || span.textContent;
+
       span.classList.remove("hidden"); // Make sure the span is visible
-      if (this.currentCharIndex < text.length) {
+
+      if (this.currentCharIndex < text.length && progress > this.typingSpeed) {
         span.textContent += text.charAt(this.currentCharIndex);
         this.currentCharIndex++;
-        setTimeout(() => this.typeNextChar(), this.typingSpeed);
-      } else {
+        this.lastCharTime = timestamp;
+      } else if (this.currentCharIndex >= text.length) {
         this.currentCharIndex = 0;
         this.currentSpanIndex++;
-        setTimeout(() => this.typeNextChar(), this.pauseBetweenLines);
+        this.lastCharTime = timestamp + this.pauseBetweenLines;
       }
+
+      requestAnimationFrame(this.typeNextChar.bind(this));
     } else {
-      // Forward typing is complete
-      this.isTyping = false;
-      // Set for reverse typing
+      // Once typing is complete, reset for reverse typing
       this.currentSpanIndex = this.spans.length - 1;
       this.currentCharIndex =
         this.spans[this.currentSpanIndex].getAttribute("data-text").length;
-      setTimeout(() => this.reverseTypingEffect(), 2000); // wait for 2 seconds, then start reverse typing
+      this.lastCharTime = undefined;
+      requestAnimationFrame(this.reverseTypingEffect.bind(this));
     }
   }
 
-  reverseTypingEffect() {
-    if (this.currentSpanIndex >= 0) {
+  reverseTypingEffect(timestamp) {
+    if (!this.lastCharTime)
+      this.lastCharTime = timestamp + this.pauseAfterComplete;
+    const progress = timestamp - this.lastCharTime;
+
+    if (this.currentSpanIndex > 0) {
       const span = this.spans[this.currentSpanIndex];
-      const text = span.getAttribute("data-text") || span.textContent;
-      if (this.currentCharIndex > 0) {
-        // Remove the last character
+      let text = span.getAttribute("data-text") || span.textContent;
+
+      if (this.currentCharIndex > 0 && progress > this.reverseTypingSpeed) {
         span.textContent = text.substring(0, this.currentCharIndex - 1);
         this.currentCharIndex--;
-        setTimeout(() => this.reverseTypingEffect(), this.reverseTypingSpeed);
-      } else {
-        // Move to the previous span if it exists, without a pause
-        if (this.currentSpanIndex > 0) {
-          this.currentSpanIndex--;
+        this.lastCharTime = timestamp;
+      } else if (this.currentCharIndex <= 0) {
+        this.currentSpanIndex--;
+        if (this.currentSpanIndex >= 0) {
           this.currentCharIndex =
             this.spans[this.currentSpanIndex].getAttribute("data-text").length;
-          this.reverseTypingEffect();
-        } else {
-          // Reverse typing is complete, start forward typing again
-          this.isReverseTyping = true; // Set the flag as it's now going to start forward typing
-          setTimeout(() => this.initTypingEffect(), this.pauseBetweenLines); // wait for 2 seconds, then start forward typing
         }
+        this.lastCharTime = timestamp;
       }
+
+      requestAnimationFrame(this.reverseTypingEffect.bind(this));
     } else {
-      // Check if reverse typing is complete and if code typing is also complete
-      this.textTypingCompleted = true;
-      this.checkAndRestartAnimations();
+      // Reset for the next round of typing
+      this.initTypingEffect();
+      this.initCodeTypingEffect();
     }
   }
-
   initCodeTypingEffect() {
+    if (this.isReverseCodeTyping) {
+      this.currentCodeLineIndex = 0;
+      this.currentCodeCharIndex = 0;
+      this.isReverseCodeTyping = false;
+    }
     this.codeLines.forEach((line) => {
       line.textContent = ""; // Clear content
     });
     this.typeNextCodeLine();
   }
 
-  typeNextCodeLine() {
-    // Ensuring each code line's typing syncs with text typing
+  typeNextCodeLine(timestamp) {
+    if (!this.lastCodeCharTime)
+      this.lastCodeCharTime = timestamp + this.restartDelay;
+    const progress = timestamp - this.lastCodeCharTime;
+
     if (this.currentCodeLineIndex < this.codeLines.length) {
       const line = this.codeLines[this.currentCodeLineIndex];
+
       const text = line.getAttribute("data-text") || line.textContent;
+
       line.classList.remove("hidden"); // Make sure the line is visible
-      if (this.currentCodeCharIndex < text.length) {
+
+      if (
+        this.currentCodeCharIndex < text.length &&
+        progress > this.codeTypingSpeed
+      ) {
         line.textContent += text.charAt(this.currentCodeCharIndex);
         this.currentCodeCharIndex++;
-        setTimeout(() => this.typeNextCodeLine(), this.codeTypingSpeed); // Synced speed
-      } else {
+        this.lastCodeCharTime = timestamp;
+      } else if (this.currentCodeCharIndex >= text.length) {
         this.currentCodeCharIndex = 0;
         this.currentCodeLineIndex++;
-        setTimeout(() => this.typeNextCodeLine(), this.pauseBetweenLines); // Synced pause
+        this.lastCodeCharTime = timestamp + this.pauseBetweenLines;
       }
+
+      requestAnimationFrame(this.typeNextCodeLine.bind(this));
     } else {
-      // Start reverse typing for code when forward typing is complete
+      // Once typing is complete, reset for reverse typing
       this.currentCodeLineIndex = this.codeLines.length - 1;
       this.currentCodeCharIndex =
         this.codeLines[this.currentCodeLineIndex].getAttribute(
           "data-text"
         ).length;
-      setTimeout(() => this.reverseCodeTypingEffect(), 2000); // Consistent wait time with text
+      this.lastCodeCharTime = undefined;
+      requestAnimationFrame(this.reverseCodeTypingEffect.bind(this));
     }
   }
 
-  reverseCodeTypingEffect() {
-    // Reverse typing for code should also sync with text
-    if (this.currentCodeLineIndex >= 0) {
+  reverseCodeTypingEffect(timestamp) {
+    if (!this.lastCodeCharTime)
+      this.lastCodeCharTime = timestamp + this.pauseAfterComplete;
+    const progress = timestamp - this.lastCodeCharTime;
+
+    if (this.currentCodeLineIndex > 0) {
       const line = this.codeLines[this.currentCodeLineIndex];
       const text = line.getAttribute("data-text") || line.textContent;
-      if (this.currentCodeCharIndex > 0) {
+
+      if (
+        this.currentCodeCharIndex > 0 &&
+        progress > this.codeReverseTypingSpeed
+      ) {
         line.textContent = text.substring(0, this.currentCodeCharIndex - 1);
         this.currentCodeCharIndex--;
-        setTimeout(
-          () => this.reverseCodeTypingEffect(),
-          this.codeReverseTypingSpeed
-        ); // Synced speed
-      } else {
-        if (this.currentCodeLineIndex > 0) {
-          this.currentCodeLineIndex--;
+        this.lastCodeCharTime = timestamp;
+      } else if (this.currentCodeCharIndex <= 0) {
+        this.currentCodeLineIndex--;
+        if (this.currentCodeLineIndex >= 0) {
           this.currentCodeCharIndex =
             this.codeLines[this.currentCodeLineIndex].getAttribute(
               "data-text"
             ).length;
-          this.reverseCodeTypingEffect();
-        } else {
-          // When reverse typing for code is complete, reset for next round
-          this.currentCodeLineIndex = 0;
-          this.currentCodeCharIndex = 0;
-          setTimeout(() => this.initCodeTypingEffect(), this.pauseBetweenLines); // Consistent wait time with text
         }
+        this.lastCodeCharTime = timestamp;
       }
-    } else {
-      // Check if reverse typing for code is complete and if text typing is also complete
-      this.codeTypingCompleted = true;
-      this.checkAndRestartAnimations();
+
+      requestAnimationFrame(this.reverseCodeTypingEffect.bind(this));
     }
   }
 }
