@@ -286,11 +286,13 @@ document.addEventListener("DOMContentLoaded", function () {
             
             let index = 0;
             let charIndex = 0;
+            
 
             function type() {
                 if (index < spans.length) {
                     spans[index].classList.remove("hidden");
                     const originalText = spans[index].getAttribute("data-text");
+                    
                     if (index === 0) {
                         let heading3DropdownIcon = document.getElementById(
                             "heading3-dropdown-icon"
@@ -298,14 +300,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         heading3DropdownIcon.classList.remove("hidden");
                     }
                     if (charIndex < originalText.length) {
-                        // console.log(originalText.slice(0, charIndex + 1))
                         spans[index].textContent = originalText.slice(0, charIndex + 1);
                         charIndex++;
-                        setTimeout(type, 50);
+                        setTimeout(type, 25);
                     } else {
                         charIndex = 0;
                         index++;
-                        setTimeout(type, 800);
+                        setTimeout(type, 30);
                     }
                 } else {
                     setTimeout(() => {
@@ -349,7 +350,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             function spansAppear(){
                 if (idx < text.length) {
-                    // code.textContent += text.charAt(i);
                     idx++;
                     if (text.charAt(idx) === ".") {
                         if (spanCount <= 7) {
@@ -358,12 +358,12 @@ document.addEventListener("DOMContentLoaded", function () {
                                 element.style.opacity = 1;
                                 totalSpansAnimated++;
                             }, timer);
-                            timer += 70;
+                            timer += 10;
                             spanCount++;
                         }
-                        setTimeout(spansAppear, 50);
+                        setTimeout(spansAppear, 5);
                     } else {
-                        setTimeout(spansAppear, 15); // adjust the delay time as needed
+                        setTimeout(spansAppear, 10); // adjust the delay time as needed
                     }
                 }
             }
@@ -374,118 +374,108 @@ document.addEventListener("DOMContentLoaded", function () {
             spansAppear();
             spans.forEach((span) => span.setAttribute("data-text", span.textContent));
             spans.forEach((span) => (span.textContent = ""));
-            setTimeout(type,1000);
+            setTimeout(type,500);
+
+            function reset() {
+                // Reset the entire priview template
+                isAnimating = false; // Reset animation state
+                rnbwPreviewElement.innerHTML = rnbwPreviewTemplate;
+                
+                // Restart the animation
+                setTimeout(() => {
+                    animateOnIntersect([{ isIntersecting: true }], observer)
+                },100);
+                
+            }       
+         
+
+        function reverseAnimation() {
+        
+            const spans = document.querySelectorAll("h3 span");
+            const code = document.querySelector("code");
+            const codeHTML = code.querySelectorAll("p");
+            if (!text) {
+                text = code.textContent;
+            }
+    
+            let index = spans.length - 1;
+            let charIndex = spans[index].textContent.length - 1;
+            
+    
+            function reverseText() {
+                if (index >= 0) {
+                    if (charIndex >= 0) {
+                        spans[index].textContent = spans[index].textContent.slice(0, charIndex);
+                        charIndex--;
+                        setTimeout(reverseText, 25);
+                    } else {
+                        index--;
+                        if(index>=0) charIndex = spans[index].textContent.length - 1;
+                        setTimeout(reverseText, 30);
+                    }
+                }
+            }
+    
+            let i = codeHTML.length - 1;
+            let j = codeHTML[i].textContent.length - 1;
+            
+            function reverseCode() {
+                if (i >= 0) {
+                    if (j >= 0) {
+                        codeHTML[i].textContent = codeHTML[i].textContent.slice(0, j);
+                        j--;
+                        setTimeout(reverseCode, 10);
+                    } else {
+                        i--;
+                        if(i>=0) j = codeHTML[i].textContent.length - 1;
+                        setTimeout(reverseCode, 15);
+                    }
+                }
+                else {
+                    setTimeout(reset, 500);
+                 }
+            }
+    
+    
+            let idx = code.textContent.length - 1;
+            let spanCount = 8;
+            let totalSpansAnimated = 8;
+            let timer = 100;
+    
+            function spansDisappear(){
+                if (idx < text.length) {
+                    // code.textContent += text.charAt(i);
+                    idx--;
+                    if (text.charAt(idx) === ".") {
+                        if (spanCount >= 0) {
+                            let element = document.getElementById("span" + spanCount);
+                            setTimeout(() => {
+                                if(element == null) return
+                                element.style.opacity = 0;
+                                totalSpansAnimated--;
+                            }, timer);
+                            timer += 10;
+                            spanCount--;
+                        }
+                        setTimeout(spansDisappear, 5);
+                    } else {
+                        setTimeout(spansDisappear, 10); // adjust the delay time as needed
+                    }
+                }
+            }
+    
+            reverseText();
+            reverseCode();
+            spansDisappear();
+    
+        }
+
             
         }
+
+        
+               
     }
 
-    function reset() {
-        console.log("reset function is called")
-        const spans = document.querySelectorAll("h3 span");
-        spans.forEach((span) => span.classList.add("hidden"));
-    
-        let heading3DropdownIcon = document.getElementById(
-          "heading3-dropdown-icon"
-        );
-        heading3DropdownIcon.classList.add("hidden");
-    
-        for (let i = 1; i <= 7; i++) {
-          let element = document.getElementById("span" + i);
-          element.style.opacity = 0;
-        }
-        const code = document.querySelector("code");
-        code.textContent = "";
-        observer.unobserve(rnbwPreviewElement);
-        index = 0;
-        charIndex = 0;
-        i = 0;
-        spanCount = 1;
-        totalSpansAnimated = 0;
-        timer = 1500;
-        observer.observe(rnbwPreviewElement);
-      }
-
-    function reverseAnimation() {
-        
-        const spans = document.querySelectorAll("h3 span");
-        const code = document.querySelector("code");
-        const codeHTML = code.querySelectorAll("p");
-        if (!text) {
-            text = code.textContent;
-        }
-
-        let index = spans.length - 1;
-        let charIndex = spans[index].textContent.length - 1;
-        
-
-        function reverseText() {
-            if (index >= 0) {
-                if (charIndex >= 0) {
-                    spans[index].textContent = spans[index].textContent.slice(0, charIndex);
-                    charIndex--;
-                    setTimeout(reverseText, 40);
-                } else {
-                    index--;
-                    charIndex = spans[index].textContent.length - 1;
-                    setTimeout(reverseText, 800);
-                }
-            }
-        }
-
-        let i = codeHTML.length - 1;
-        let j = codeHTML[i].textContent.length - 1;
-        
-        function reverseCode() {
-            if (i >= 0) {
-                if (j >= 0) {
-                    codeHTML[i].textContent = codeHTML[i].textContent.slice(0, j);
-                    j--;
-                    setTimeout(reverseCode, 10);
-                } else {
-                    i--;
-                    j = codeHTML[i].textContent.length - 1;
-                    setTimeout(reverseCode, 40);
-                }
-            }
-            else {
-                setTimeout(() => {
-                  reset();
-                }, 500);
-             }
-        }
-
-
-        let idx = code.textContent.length - 1;
-        let spanCount = 8;
-        let totalSpansAnimated = 8;
-        let timer = 100;
-
-        function spansDisappear(){
-            if (idx < text.length) {
-                // code.textContent += text.charAt(i);
-                idx--;
-                if (text.charAt(idx) === ".") {
-                    if (spanCount >= 0) {
-                        let element = document.getElementById("span" + spanCount);
-                        setTimeout(() => {
-                            element.style.opacity = 0;
-                            totalSpansAnimated--;
-                        }, timer);
-                        timer += 70;
-                        spanCount--;
-                    }
-                    setTimeout(spansDisappear, 100);
-                } else {
-                    setTimeout(spansDisappear, 20); // adjust the delay time as needed
-                }
-            }
-        }
-
-        reverseText();
-        reverseCode();
-        spansDisappear();
-
-    }
-
-    observer.observe(rnbwPreviewElement);
+       observer.observe(rnbwPreviewElement);
 });
